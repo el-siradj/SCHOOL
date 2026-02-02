@@ -124,9 +124,12 @@ async function resetClient() {
 
 async function fullResetClient() {
   logger.info("[whatsapp] starting FULL reset (deleting session)");
+
+  // Step 1: Destroy client
   try {
     if (client) {
       try {
+        logger.info("[whatsapp] destroying client...");
         await client.destroy();
         logger.info("[whatsapp] client destroyed for full reset");
       } catch (err) {
@@ -138,47 +141,72 @@ async function fullResetClient() {
     state.ready = false;
     state.lastQr = null;
     state.lastDisconnect = "full_reset";
+  }
 
-    // Wait for process to settle
-    await new Promise(resolve => setTimeout(resolve, 3000));
+  // Step 2: Wait for file handles to be released
+  logger.info("[whatsapp] waiting 5s for file handles to release...");
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
-    const authPath = path.join(process.cwd(), ".wwebjs_auth");
-    const cachePath = path.join(process.cwd(), ".wwebjs_cache");
+  // Step 3: Delete session directories
+  const authPath = path.join(process.cwd(), ".wwebjs_auth");
+  const cachePath = path.join(process.cwd(), ".wwebjs_cache");
 
-    const deleteWithRetry = (dirPath, retries = 3) => {
-      for (let i = 0; i < retries; i++) {
-        try {
-          if (fs.existsSync(dirPath)) {
-            fs.rmSync(dirPath, { recursive: true, force: true });
-            logger.info("[whatsapp] deleted directory: %s", dirPath);
-          }
+  // Helper function with synchronous delays
+  const deleteWithRetry = (dirPath, retries = 5) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        if (fs.existsSync(dirPath)) {
+          logger.info("[whatsapp] attempting to delete: %s (attempt %d/%d)", dirPath, i + 1, retries);
+          fs.rmSync(dirPath, { recursive: true, force: true, maxRetries: 3, retryDelay: 1000 });
+          logger.info("[whatsapp] successfully deleted: %s", dirPath);
           return true;
-        } catch (err) {
-          if (i === retries - 1) {
-            logger.error("[whatsapp] failed to delete %s after %d retries: %s", dirPath, retries, err.message);
-            return false;
+        } else {
+          logger.info("[whatsapp] directory does not exist: %s", dirPath);
+          return true;
+        }
+      } catch (err) {
+        logger.warn("[whatsapp] delete attempt %d/%d failed for %s: %s", i + 1, retries, dirPath, err.message);
+
+        if (i < retries - 1) {
+          // Synchronous wait between retries
+          const waitMs = (i + 1) * 2000; // Increasing delay: 2s, 4s, 6s, 8s, 10s
+          logger.info("[whatsapp] waiting %dms before retry...", waitMs);
+          const waitUntil = Date.now() + waitMs;
+          while (Date.now() < waitUntil) {
+            // Busy wait
           }
-          logger.warn("[whatsapp] delete attempt %d failed for %s, retrying in 2s...", i + 1, dirPath);
-          // Use synchronous sleep for simplicity in this loop or just continue
-          // But it's better to wait
+        } else {
+          logger.error("[whatsapp] failed to delete %s after %d attempts: %s", dirPath, retries, err.message);
+          logger.warn("[whatsapp] continuing with initialization despite deletion failure...");
+          return false;
         }
       }
-      return false;
-    };
+    }
+    return false;
+  };
 
-    deleteWithRetry(authPath);
-    deleteWithRetry(cachePath);
+  // Delete both directories
+  const authDeleted = deleteWithRetry(authPath);
+  const cacheDeleted = deleteWithRetry(cachePath);
 
-    logger.info("[whatsapp] re-initializing after full reset in 1s...");
-    setTimeout(() => {
-      try {
-        initWhatsApp();
-      } catch (err) {
-        logger.error("[whatsapp] init after full reset failed: %s", err?.message || err);
-      }
-    }, 1000);
+  if (authDeleted && cacheDeleted) {
+    logger.info("[whatsapp] all session files deleted successfully");
+  } else {
+    logger.warn("[whatsapp] some session files could not be deleted, but continuing...");
   }
+
+  // Step 4: Re-initialize
+  logger.info("[whatsapp] re-initializing after full reset in 2s...");
+  setTimeout(() => {
+    try {
+      initWhatsApp();
+      logger.info("[whatsapp] re-initialization started successfully");
+    } catch (err) {
+      logger.error("[whatsapp] init after full reset failed: %s", err?.message || err);
+    }
+  }, 2000);
 }
+
 
 let _lastReset = 0;
 function scheduleReset() {
