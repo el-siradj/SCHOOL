@@ -1,4 +1,4 @@
-const { getState, resetClient } = require("../services/whatsapp/client");
+const { getState, resetClient, fullResetClient } = require("../services/whatsapp/client");
 
 
 exports.state = async (req, res) => {
@@ -14,5 +14,10 @@ exports.qr = async (req, res) => {
 exports.restart = async (req, res) => {
   await resetClient();
   res.json({ success: true, message: "WhatsApp client restarting..." });
+};
+
+exports.fullReset = async (req, res) => {
+  await fullResetClient();
+  res.json({ success: true, message: "WhatsApp session cleared and client restarting..." });
 };
 

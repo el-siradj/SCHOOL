@@ -18,23 +18,22 @@ function getHelmetConfig() {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        imgSrc: ["'self'", "data:", "https:", "blob:", "http://localhost:3000", "http://127.0.0.1:3000", "https://api.crshc.com"],
         scriptSrc: isDev ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"] : ["'self'"],
-        connectSrc: ["'self'"],
+        connectSrc: ["'self'", "http://localhost:3000", "http://127.0.0.1:3000", "https://api.crshc.com"],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: isDev ? null : [],
       },
     },
 
-    // Cross-Origin Resource Policy
-    crossOriginResourcePolicy: { 
-      policy: isDev ? "cross-origin" : "same-origin" 
+    crossOriginResourcePolicy: {
+      policy: "cross-origin"
     },
 
     // Cross-Origin Opener Policy
-    crossOriginOpenerPolicy: { 
-      policy: "same-origin-allow-popups" 
+    crossOriginOpenerPolicy: {
+      policy: "same-origin-allow-popups"
     },
 
     // DNS Prefetch Control
@@ -60,8 +59,8 @@ function getHelmetConfig() {
     noSniff: true,
 
     // Referrer Policy
-    referrerPolicy: { 
-      policy: "strict-origin-when-cross-origin" 
+    referrerPolicy: {
+      policy: "strict-origin-when-cross-origin"
     },
 
     // XSS Filter
@@ -189,13 +188,13 @@ const corsConfig = {
 const sanitizationPatterns = {
   // SQL injection patterns
   sqlInjection: /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|DECLARE)\b)/gi,
-  
+
   // XSS patterns
   xss: /<script[^>]*>.*?<\/script>/gi,
-  
+
   // NoSQL injection patterns
   nosqlInjection: /(\$where|\$ne|\$gt|\$lt|\$regex)/gi,
-  
+
   // Path traversal
   pathTraversal: /(\.\.|\/etc\/|\/var\/|C:\\)/gi,
 };

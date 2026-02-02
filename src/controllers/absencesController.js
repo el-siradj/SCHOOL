@@ -1,3 +1,10 @@
+const pool = require("../db");
+const fs = require("fs");
+const path = require("path");
+const puppeteer = require("puppeteer");
+const { toDigitsMorocco, toJid, sendOne } = require("../services/whatsapp/queue");
+const { logger } = require("../utils/logger");
+
 // توليد PDF إشعار غياب عام بدون عدد الأيام أو رقم الإشعار
 exports.getSimpleAbsenceNoticesPdf = async (req, res) => {
   try {
@@ -64,16 +71,10 @@ exports.getSimpleAbsenceNoticesPdf = async (req, res) => {
     res.setHeader("Content-Disposition", "inline; filename=absence-simple-notices.pdf");
     res.end(pdfBuffer);
   } catch (e) {
-    console.error("PDF إشعار عام خطأ:", e);
+    logger.error("PDF إشعار عام خطأ:", e);
     res.status(500).json({ message: "فشل إنشاء PDF", error: e.message });
   }
 };
-const pool = require("../db");
-const fs = require("fs");
-const path = require("path");
-const puppeteer = require("puppeteer");
-const { toDigitsMorocco, toJid, sendOne } = require("../services/whatsapp/queue");
-const logger = require("../utils/logger");
 
 function normStr(v) {
   if (v === null || v === undefined) return "";
@@ -483,9 +484,9 @@ exports.getStudentAbsenceCardPdf = async (req, res) => {
   const studentId = Number(req.params.studentId);
   const userId = req.user?.id;
   const userRole = req.user?.role;
-  console.log(`[PDF] userId=${userId} role=${userRole} studentId=${studentId}`);
+  logger.info(`[PDF] userId=${userId} role=${userRole} studentId=${studentId}`);
   if (!studentId) {
-    console.error("[PDF] Invalid studentId", { studentId, userId, userRole });
+    logger.error("[PDF] Invalid studentId", { studentId, userId, userRole });
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     return res.status(400).json({ message: "معرّف غير صالح" });
   }
@@ -1053,7 +1054,7 @@ exports.sendStudentAbsenceCardPdfWhatsApp = async (req, res) => {
     try {
       browser = await puppeteer.launch(launchOptions);
     } catch (err) {
-      console.error("[absences/pdf/send] puppeteer.launch failed, retrying without sandbox args:", err.message);
+      logger.error("[absences/pdf/send] puppeteer.launch failed, retrying without sandbox args: %s", err.message);
       const fallback = { headless: true };
       if (process.env.PUPPETEER_EXECUTABLE_PATH) fallback.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
       browser = await puppeteer.launch(fallback);
@@ -1063,7 +1064,7 @@ exports.sendStudentAbsenceCardPdfWhatsApp = async (req, res) => {
     await page.setContent(htmlAr, { waitUntil: "load", timeout: 60000 });
     const pdf = await page.pdf({
       format: "A4",
-      landscape: false,
+      landscape: !!isLandscape,
       preferCSSPageSize: true,
       printBackground: true,
     });
@@ -1240,7 +1241,7 @@ exports.sendStudentAbsenceCardPdfWhatsApp = async (req, res) => {
 
     return res.json({ ok: true, campaignId, results });
   } catch (e) {
-    console.error("[sendStudentAbsenceCardPdfWhatsApp] Error:", e);
+    logger.error("[sendStudentAbsenceCardPdfWhatsApp] Error:", e);
     return res.status(500).json({ message: "فشل إرسال البطاقة", error: e.message });
   } finally {
     try {

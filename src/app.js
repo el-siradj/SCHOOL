@@ -73,7 +73,44 @@ app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 app.use("/api/timetable-admin", require("./routes/timetableAdminRoutes"));
 app.use("/api/timetable", require("./routes/timetableRoutes"));
 
-app.get("/api/health", (_, res) => res.json({ ok: true }));
+// Health check endpoint with detailed status
+app.get("/api/health", async (req, res) => {
+  const health = {
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    environment: process.env.NODE_ENV || "development",
+  };
+
+  // Check database connection
+  try {
+    const pool = require("./db");
+    await pool.query("SELECT 1");
+    health.database = "connected";
+  } catch (error) {
+    health.database = "disconnected";
+    health.status = "degraded";
+  }
+
+  // Check WhatsApp status (if enabled)
+  if (process.env.WHATSAPP_ENABLED === "true") {
+    try {
+      const { getState } = require("./services/whatsapp/client");
+      const waState = getState();
+      health.whatsapp = {
+        ready: waState.ready,
+        hasQr: !!waState.lastQr,
+      };
+    } catch (error) {
+      health.whatsapp = "unavailable";
+    }
+  }
+
+  const statusCode = health.status === "ok" ? 200 : 503;
+  res.status(statusCode).json(health);
+});
+
 
 // Serve frontend (internal deployment)
 // Build frontend: (cd frontend && npm run build) then start backend with NODE_ENV=production

@@ -1,4 +1,5 @@
 const cors = require("cors");
+const { logger } = require("../utils/logger");
 
 function parseList(value) {
   if (!value) return [];
@@ -10,6 +11,9 @@ function parseList(value) {
 
 function corsMiddleware() {
   const origins = parseList(process.env.CORS_ORIGINS);
+  if (process.env.NODE_ENV === "development" && !origins.includes("http://127.0.0.1:5173")) {
+    origins.push("http://127.0.0.1:5173");
+  }
   const allowAll = process.env.CORS_ALLOW_ALL === "true" || origins.length === 0;
 
   const methods = parseList(process.env.CORS_METHODS);
@@ -23,6 +27,9 @@ function corsMiddleware() {
       if (!origin) return cb(null, true); // allow curl/postman/mobile apps or same-origin requests from tools
       if (allowAll) return cb(null, true);
       const ok = origins.includes(origin);
+      if (!ok) {
+        logger.warn(`CORS Rejecting origin: ${origin}. Allowed: ${origins.join(", ")}`);
+      }
       return cb(ok ? null : new Error("CORS: Origin not allowed"), ok);
     },
     credentials,

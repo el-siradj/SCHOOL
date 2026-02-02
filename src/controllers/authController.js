@@ -52,7 +52,7 @@ exports.login = async (req, res) => {
     res.cookie("token", token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -97,7 +97,7 @@ exports.updateMe = async (req, res) => {
     res.cookie("token", token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     res.json({ ok: true, token, user: { id: user.id, avatar_url: user.avatar_url || null, full_name: user.full_name, email: user.email, role: user.role } });
@@ -112,7 +112,7 @@ exports.updateMe = async (req, res) => {
 
 exports.logout = async (req, res) => {
   logger.auth("logout", req.user?.id, { ip: req.ip });
-  res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: false });
+  res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
   res.json({ ok: true });
 };
 
@@ -135,9 +135,9 @@ exports.changeMyPassword = async (req, res) => {
 
     const password_hash = await bcrypt.hash(new_password, 10);
     await pool.execute("UPDATE users SET password_hash=? WHERE id=?", [password_hash, req.user.id]);
-    
+
     logger.auth("password-changed", req.user.id, { ip: req.ip });
-    
+
     res.json({ ok: true });
   } catch (e) {
     logger.error("Password change failed", e, { userId: req.user?.id });
