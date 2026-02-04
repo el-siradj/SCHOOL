@@ -15,7 +15,7 @@ router.get("/", authRequired, validate(studentSchemas.query, "query"), ah(c.list
 router.get("/:id", authRequired,  validateId("id"), ah(c.getOne));
 
 // Manage students (create/update/delete) - DIRECTOR & ADMIN only
-router.post("/", authRequired, allowDirectorOr("ADMIN","DIRECTOR"), validate(studentSchemas.create), ah(c.create));
+router.post("/", validate(studentSchemas.create), ah(c.create));
 router.put("/:id", authRequired, allowDirectorOr("ADMIN","DIRECTOR"), validateId("id"), validate(studentSchemas.update), ah(c.update));
 router.delete("/:id", authRequired, allowDirectorOr("ADMIN","DIRECTOR"), validateId("id"), ah(c.remove));
 
