@@ -275,6 +275,9 @@ exports.getOne = async (req, res) => {
 };
 
 exports.list = async (req, res) => {
+  const allParam = String(req.query.all || "").toLowerCase();
+  const useAll = allParam === "true" || allParam === "1";
+
   const page = Math.max(1, Number(req.query.page || 1));
   const limit = Math.min(200, Math.max(10, Number(req.query.limit || 20)));
   const offset = (page - 1) * limit;
@@ -320,17 +323,17 @@ exports.list = async (req, res) => {
   const [[countRow]] = await pool.execute(`SELECT COUNT(*) AS total FROM students ${whereSql}`, params);
 
   const total = Number(countRow.total || 0);
-  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const totalPages = useAll ? 1 : Math.max(1, Math.ceil(total / limit));
 
-  const [rows] = await pool.execute(
-    `SELECT id, class_number, massar_code, full_name, status, gender,
+  const baseSelect = `SELECT id, class_number, massar_code, full_name, status, gender,
             level, class_name, father_phone, mother_phone, guardian_phone
        FROM students
       ${whereSql}
-      ORDER BY class_name ASC, class_number IS NULL ASC, class_number ASC, full_name ASC, id ASC
-      LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
-  );
+      ORDER BY class_name ASC, class_number IS NULL ASC, class_number ASC, full_name ASC, id ASC`;
+
+  const [rows] = useAll
+    ? await pool.execute(baseSelect, params)
+    : await pool.execute(`${baseSelect} LIMIT ? OFFSET ?`, [...params, limit, offset]);
 
   // Options should come from the dedicated `classes` table (only active, ordered)
   const [levelsRows] = await pool.execute(
@@ -342,7 +345,7 @@ exports.list = async (req, res) => {
 
   res.json({
     data: rows.map((r) => ({ ...r, is_active: isActiveStatus(r.status) })),
-    meta: { page, limit, total, totalPages },
+    meta: { page: useAll ? 1 : page, limit: useAll ? total : limit, total, totalPages },
     options: {
       levels: levelsRows.map((x) => x.level).filter(Boolean),
       classes: classesRows.map((x) => x.classe).filter(Boolean),
