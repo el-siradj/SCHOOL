@@ -41,7 +41,7 @@ const schemas = {
     "number.base": "المعرف يجب أن يكون رقماً",
     "number.integer": "المعرف يجب أن يكون رقماً صحيحاً",
     "number.positive": "المعرف يجب أن يكون موجباً",
-    "any.required": "المعرف مطلوب",
+    //"any.required": "المعرف مطلوب",
   }),
 
   // Email (required & optional)
