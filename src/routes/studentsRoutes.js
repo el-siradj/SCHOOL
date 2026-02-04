@@ -16,7 +16,7 @@ router.get("/:id", authRequired,  validateId("id"), ah(c.getOne));
 
 // Manage students (create/update/delete) - DIRECTOR & ADMIN only
 router.post("/", validate(studentSchemas.create), ah(c.create));
-router.put("/:id", authRequired, allowDirectorOr("ADMIN","DIRECTOR"), validateId("id"), validate(studentSchemas.update), ah(c.update));
-router.delete("/:id", authRequired, allowDirectorOr("ADMIN","DIRECTOR"), validateId("id"), ah(c.remove));
+router.put("/:id", authRequired, validateId("id"), validate(studentSchemas.update), ah(c.update));
+router.delete("/:id", authRequired,  validateId("id"), ah(c.remove));
 
 module.exports = router;
